@@ -20,63 +20,62 @@ export async function POST(
 
   const value = rollDice();
 
-  // Wrap everything in a transaction to prevent race conditions
-  const result = await db.transaction(async (tx) => {
-    const room = await tx.query.rooms.findFirst({
-      where: eq(rooms.shareCode, code),
+  try {
+    const result = db.transaction((tx) => {
+      const [room] = tx.select().from(rooms).where(eq(rooms.shareCode, code)).all();
+
+      if (!room) {
+        return { error: "Room not found", status: 404 } as const;
+      }
+
+      if (room.status !== "rolling") {
+        return { error: "Game is not in rolling phase", status: 400 } as const;
+      }
+
+      const [player] = tx.select().from(players).where(
+        and(eq(players.id, playerId), eq(players.roomId, room.id))
+      ).all();
+
+      if (!player) {
+        return { error: "Player not found in this room", status: 404 } as const;
+      }
+
+      if (player.isEliminated) {
+        return { error: "Player has been eliminated", status: 400 } as const;
+      }
+
+      const [existingRoll] = tx.select().from(rolls).where(
+        and(
+          eq(rolls.playerId, playerId),
+          eq(rolls.roomId, room.id),
+          eq(rolls.round, room.currentRound)
+        )
+      ).all();
+
+      if (existingRoll) {
+        return { error: "Player has already rolled this round", status: 400 } as const;
+      }
+
+      tx.insert(rolls).values({
+        id: generateId(),
+        playerId,
+        roomId: room.id,
+        round: room.currentRound,
+        value,
+      }).run();
+
+      resolveRoundIfComplete(tx, room.id);
+
+      return { value, round: room.currentRound } as const;
     });
 
-    if (!room) {
-      return { error: "Room not found", status: 404 };
+    if ("error" in result) {
+      return Response.json({ error: result.error }, { status: result.status });
     }
 
-    if (room.status !== "rolling") {
-      return { error: "Game is not in rolling phase", status: 400 };
-    }
-
-    const player = await tx.query.players.findFirst({
-      where: and(eq(players.id, playerId), eq(players.roomId, room.id)),
-    });
-
-    if (!player) {
-      return { error: "Player not found in this room", status: 404 };
-    }
-
-    if (player.isEliminated) {
-      return { error: "Player has been eliminated", status: 400 };
-    }
-
-    const existingRoll = await tx.query.rolls.findFirst({
-      where: and(
-        eq(rolls.playerId, playerId),
-        eq(rolls.roomId, room.id),
-        eq(rolls.round, room.currentRound)
-      ),
-    });
-
-    if (existingRoll) {
-      return { error: "Player has already rolled this round", status: 400 };
-    }
-
-    await tx.insert(rolls).values({
-      id: generateId(),
-      playerId,
-      roomId: room.id,
-      round: room.currentRound,
-      value,
-    });
-
-    await resolveRoundIfComplete(tx, room.id);
-
-    return { value, round: room.currentRound };
-  });
-
-  if ("error" in result) {
-    return Response.json(
-      { error: result.error },
-      { status: result.status }
-    );
+    return Response.json(result);
+  } catch (e) {
+    console.error("Roll error:", e);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  return Response.json(result);
 }

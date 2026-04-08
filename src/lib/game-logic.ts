@@ -1,10 +1,8 @@
-import { db } from "@/db";
 import { rooms, players, rolls } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "@/db/schema";
 
-type Tx = BetterSQLite3Database<typeof schema>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Tx = any;
 
 export function rollDice(): number {
   return Math.floor(Math.random() * 6) + 1;
@@ -12,48 +10,43 @@ export function rollDice(): number {
 
 /**
  * After every roll, check if the round is complete and resolve it.
- * Must be called within the same transaction as the roll insert.
+ * Must be called within the same synchronous transaction as the roll insert.
  */
-export async function resolveRoundIfComplete(tx: Tx, roomId: string) {
-  const room = await tx.query.rooms.findFirst({
-    where: eq(rooms.id, roomId),
-  });
+export function resolveRoundIfComplete(tx: Tx, roomId: string) {
+  const [room] = tx.select().from(rooms).where(eq(rooms.id, roomId)).all();
   if (!room || room.status !== "rolling") return;
 
-  const activePlayers = await tx.query.players.findMany({
-    where: and(eq(players.roomId, roomId), eq(players.isEliminated, false)),
-  });
+  const activePlayers = tx.select().from(players).where(
+    and(eq(players.roomId, roomId), eq(players.isEliminated, false))
+  ).all();
 
-  const currentRoundRolls = await tx.query.rolls.findMany({
-    where: and(eq(rolls.roomId, roomId), eq(rolls.round, room.currentRound)),
-  });
+  const currentRoundRolls = tx.select().from(rolls).where(
+    and(eq(rolls.roomId, roomId), eq(rolls.round, room.currentRound))
+  ).all();
 
   // Not everyone has rolled yet
   if (currentRoundRolls.length < activePlayers.length) return;
 
-  const maxValue = Math.max(...currentRoundRolls.map((r) => r.value));
-  const winners = currentRoundRolls.filter((r) => r.value === maxValue);
-  const losers = currentRoundRolls.filter((r) => r.value < maxValue);
+  const maxValue = Math.max(...currentRoundRolls.map((r: { value: number }) => r.value));
+  const losers = currentRoundRolls.filter((r: { value: number }) => r.value < maxValue);
+  const winners = currentRoundRolls.filter((r: { value: number }) => r.value === maxValue);
 
-  // Eliminate losers
   for (const loser of losers) {
-    await tx
-      .update(players)
+    tx.update(players)
       .set({ isEliminated: true })
-      .where(eq(players.id, loser.playerId));
+      .where(eq(players.id, loser.playerId))
+      .run();
   }
 
   if (winners.length === 1) {
-    // We have a winner!
-    await tx
-      .update(rooms)
+    tx.update(rooms)
       .set({ status: "complete" })
-      .where(eq(rooms.id, roomId));
+      .where(eq(rooms.id, roomId))
+      .run();
   } else {
-    // Tie — advance to next round for tied players
-    await tx
-      .update(rooms)
+    tx.update(rooms)
       .set({ currentRound: room.currentRound + 1 })
-      .where(eq(rooms.id, roomId));
+      .where(eq(rooms.id, roomId))
+      .run();
   }
 }

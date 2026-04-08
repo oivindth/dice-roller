@@ -150,7 +150,7 @@ export default function RoomPage() {
     try {
       const res = await fetch(`/api/rooms/${code}/roll`, { method: "POST" });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setRollError(data.error || "Failed to roll.");
         setShowRollAnim(false);
       } else {
@@ -200,13 +200,25 @@ export default function RoomPage() {
       <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
 
         {/* Header */}
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1">
-            Room
-          </p>
-          <h1 className="text-3xl font-black text-white tracking-tight">
-            {room.name}
-          </h1>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1">
+              Room
+            </p>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              {room.name}
+            </h1>
+          </div>
+          <button
+            onClick={() => fetchState()}
+            className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg p-2 transition-colors"
+            title="Refresh"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </button>
         </div>
 
         {/* Waiting Status */}
