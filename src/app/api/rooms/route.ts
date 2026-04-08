@@ -7,30 +7,33 @@ export async function POST(request: Request) {
   const body = await request.json();
   const roomName = body.name || "My Room";
   const playerName = body.playerName || "Host";
+  const hostPlays = body.hostPlays !== false;
 
   const roomId = generateId();
   const shareCode = generateShareCode();
-  const playerId = generateId();
+  const creatorId = generateId();
 
   await db.insert(rooms).values({
     id: roomId,
     name: roomName,
     shareCode,
-    creatorPlayerId: playerId,
+    creatorPlayerId: creatorId,
   });
 
-  await db.insert(players).values({
-    id: playerId,
-    roomId,
-    name: playerName,
-  });
+  if (hostPlays) {
+    await db.insert(players).values({
+      id: creatorId,
+      roomId,
+      name: playerName,
+    });
+  }
 
   const cookieStore = await cookies();
-  cookieStore.set("playerId", playerId, {
+  cookieStore.set("playerId", creatorId, {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   });
 
   return Response.json({ shareCode, roomId });

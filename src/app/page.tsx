@@ -7,6 +7,7 @@ export default function Home() {
   const router = useRouter();
   const [roomName, setRoomName] = useState("");
   const [playerName, setPlayerName] = useState("");
+  const [hostPlays, setHostPlays] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,7 @@ export default function Home() {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: roomName.trim(), playerName: playerName.trim() || "Host" }),
+        body: JSON.stringify({ name: roomName.trim(), playerName: playerName.trim() || "Host", hostPlays }),
       });
 
       if (!res.ok) {
@@ -73,24 +74,37 @@ export default function Home() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="playerName"
-                className="text-sm font-semibold text-gray-300 uppercase tracking-wide"
-              >
-                Your Name <span className="text-gray-500 font-normal normal-case">(optional)</span>
-              </label>
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
-                id="playerName"
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="e.g. John"
-                className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-                maxLength={40}
+                type="checkbox"
+                checked={hostPlays}
+                onChange={(e) => setHostPlays(e.target.checked)}
+                className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
                 disabled={loading}
               />
-            </div>
+              <span className="text-sm font-semibold text-gray-300">I&apos;ll play too</span>
+            </label>
+
+            {hostPlays && (
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="playerName"
+                  className="text-sm font-semibold text-gray-300 uppercase tracking-wide"
+                >
+                  Your Name <span className="text-gray-500 font-normal normal-case">(optional)</span>
+                </label>
+                <input
+                  id="playerName"
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="e.g. John"
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+                  maxLength={40}
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             {error && (
               <p className="text-red-400 text-sm font-medium">{error}</p>

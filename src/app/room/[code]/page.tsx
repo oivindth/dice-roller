@@ -234,7 +234,7 @@ export default function RoomPage() {
                 </div>
               )}
 
-              {!isInRoom && (
+              {!isInRoom && !isCreator && (
                 <form onSubmit={handleJoin} className="flex flex-col gap-3 border-t border-gray-700 pt-4">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">
                     Join this Room
