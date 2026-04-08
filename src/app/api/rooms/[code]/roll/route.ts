@@ -66,7 +66,7 @@ export async function POST(
     );
   }
 
-  const value = rollDice();
+  const value = rollDice(room.diceMax);
 
   await db.insert(rolls).values({
     id: generateId(),

@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   const roomName = body.name || "My Room";
   const playerName = body.playerName || "Host";
   const hostPlays = body.hostPlays !== false;
+  const diceMax = [6, 20, 100].includes(body.diceMax) ? body.diceMax : 6;
 
   const roomId = generateId();
   const shareCode = generateShareCode();
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     id: roomId,
     name: roomName,
     shareCode,
+    diceMax,
     creatorPlayerId: creatorId,
   });
 

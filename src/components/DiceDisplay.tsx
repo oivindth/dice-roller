@@ -3,6 +3,7 @@
 interface DiceDisplayProps {
   value?: number;
   rolling?: boolean;
+  diceMax?: number;
 }
 
 const dotPositions: Record<number, number[][]> = {
@@ -14,8 +15,9 @@ const dotPositions: Record<number, number[][]> = {
   6: [[25, 25], [75, 25], [25, 50], [75, 50], [25, 75], [75, 75]],
 };
 
-export default function DiceDisplay({ value, rolling = false }: DiceDisplayProps) {
-  const dots = value && !rolling ? dotPositions[value] : null;
+export default function DiceDisplay({ value, rolling = false, diceMax = 6 }: DiceDisplayProps) {
+  const useDotsDisplay = diceMax === 6 && value && value >= 1 && value <= 6 && !rolling;
+  const dots = useDotsDisplay ? dotPositions[value] : null;
 
   return (
     <div
@@ -31,6 +33,10 @@ export default function DiceDisplay({ value, rolling = false }: DiceDisplayProps
             <circle key={i} cx={cx} cy={cy} r={8} fill="#1f2937" />
           ))}
         </svg>
+      ) : value ? (
+        <span className={`font-black text-gray-800 ${value >= 100 ? "text-2xl" : "text-4xl"}`}>
+          {value}
+        </span>
       ) : (
         <span className="text-4xl font-black text-gray-300">-</span>
       )}

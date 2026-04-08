@@ -2,8 +2,8 @@ import { db } from "@/db";
 import { rooms, players, rolls } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
-export function rollDice(): number {
-  return Math.floor(Math.random() * 6) + 1;
+export function rollDice(max: number = 6): number {
+  return Math.floor(Math.random() * max) + 1;
 }
 
 /**

@@ -8,6 +8,7 @@ export default function Home() {
   const [roomName, setRoomName] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [hostPlays, setHostPlays] = useState(true);
+  const [diceMax, setDiceMax] = useState(6);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +23,7 @@ export default function Home() {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: roomName.trim(), playerName: playerName.trim() || "Host", hostPlays }),
+        body: JSON.stringify({ name: roomName.trim(), playerName: playerName.trim() || "Host", hostPlays, diceMax }),
       });
 
       if (!res.ok) {
@@ -72,6 +73,33 @@ export default function Home() {
                 maxLength={60}
                 disabled={loading}
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+                Dice Type
+              </span>
+              <div className="flex gap-2">
+                {[
+                  { value: 6, label: "d6" },
+                  { value: 20, label: "d20" },
+                  { value: 100, label: "d100" },
+                ].map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => setDiceMax(d.value)}
+                    disabled={loading}
+                    className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors ${
+                      diceMax === d.value
+                        ? "bg-indigo-600 text-white"
+                        : "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <label className="flex items-center gap-3 cursor-pointer">

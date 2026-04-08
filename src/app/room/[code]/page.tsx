@@ -11,6 +11,7 @@ interface Room {
   shareCode: string;
   status: "waiting" | "rolling" | "complete";
   currentRound: number;
+  diceMax: number;
   creatorPlayerId: string | null;
   createdAt: number;
 }
@@ -392,6 +393,9 @@ export default function RoomPage() {
             <div className="bg-indigo-900/40 border border-indigo-700/50 rounded-xl px-6 py-4">
               <p className="text-indigo-300 font-bold text-lg">
                 Round {room.currentRound}
+                <span className="ml-2 text-indigo-400/60 font-medium text-sm">
+                  d{room.diceMax}
+                </span>
               </p>
             </div>
 
@@ -410,6 +414,7 @@ export default function RoomPage() {
                       <DiceDisplay
                         value={displayValue ?? undefined}
                         rolling={isAnimating}
+                        diceMax={room.diceMax}
                       />
                       {!hasRolled && !rolledValue && (
                         <>

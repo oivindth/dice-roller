@@ -8,6 +8,7 @@ export const rooms = pgTable("rooms", {
     .notNull()
     .default("waiting"),
   currentRound: integer("current_round").notNull().default(1),
+  diceMax: integer("dice_max").notNull().default(6),
   creatorPlayerId: text("creator_player_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
