@@ -39,6 +39,57 @@ interface RoomState {
   currentPlayerId: string | null;
 }
 
+interface RankedPlayer extends Player {
+  position: number;
+  tied: boolean;
+  lastRound: number;
+  lastRollValue: number;
+}
+
+function computeRankings(players: Player[], rolls: Roll[]): RankedPlayer[] {
+  const ranked: RankedPlayer[] = players.map((p) => {
+    const playerRolls = rolls.filter((r) => r.playerId === p.id);
+    const lastRound =
+      playerRolls.length > 0
+        ? Math.max(...playerRolls.map((r) => r.round))
+        : 0;
+    const lastRollValue =
+      playerRolls.find((r) => r.round === lastRound)?.value ?? 0;
+    return { ...p, lastRound, lastRollValue, position: 0, tied: false };
+  });
+
+  // Sort: winner first, then later elimination round = better, then higher roll = better
+  ranked.sort((a, b) => {
+    if (a.isEliminated !== b.isEliminated) return a.isEliminated ? 1 : -1;
+    if (a.lastRound !== b.lastRound) return b.lastRound - a.lastRound;
+    return b.lastRollValue - a.lastRollValue;
+  });
+
+  // Assign positions with standard competition ranking (1224)
+  for (let i = 0; i < ranked.length; i++) {
+    if (
+      i > 0 &&
+      ranked[i].isEliminated === ranked[i - 1].isEliminated &&
+      ranked[i].lastRound === ranked[i - 1].lastRound &&
+      ranked[i].lastRollValue === ranked[i - 1].lastRollValue
+    ) {
+      ranked[i].position = ranked[i - 1].position;
+      ranked[i].tied = true;
+      ranked[i - 1].tied = true;
+    } else {
+      ranked[i].position = i + 1;
+    }
+  }
+
+  return ranked;
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 export default function RoomPage() {
   const params = useParams();
   const code = params.code as string;
@@ -54,6 +105,7 @@ export default function RoomPage() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [rollError, setRollError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevRoundRef = useRef<number | null>(null);
 
@@ -75,6 +127,12 @@ export default function RoomPage() {
       setError("Network error. Retrying...");
     }
   }, [code]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchState();
+    setRefreshing(false);
+  }
 
   useEffect(() => {
     fetchState();
@@ -155,7 +213,6 @@ export default function RoomPage() {
         setShowRollAnim(false);
       } else {
         const data = await res.json();
-        // Let the spinning play briefly before showing the result
         setTimeout(() => {
           setShowRollAnim(false);
           setRolledValue(data.value);
@@ -210,11 +267,23 @@ export default function RoomPage() {
             </h1>
           </div>
           <button
-            onClick={() => fetchState()}
-            className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg p-2 transition-colors"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg p-2 transition-colors disabled:opacity-50"
             title="Refresh"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? "animate-spin" : ""}
+            >
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
               <path d="M21 3v5h-5" />
             </svg>
@@ -303,6 +372,14 @@ export default function RoomPage() {
                   >
                     {starting ? "Starting..." : "Start Rolling"}
                   </button>
+                </div>
+              )}
+
+              {isInRoom && !isCreator && (
+                <div className="border-t border-gray-700 pt-4">
+                  <p className="text-gray-400 text-sm text-center">
+                    Waiting for the host to start the game...
+                  </p>
                 </div>
               )}
             </div>
@@ -445,20 +522,22 @@ export default function RoomPage() {
               })()}
             </div>
 
-            {/* Full results table */}
+            {/* Full results table with rankings */}
             <div className="bg-gray-800 rounded-xl p-6 shadow flex flex-col gap-4">
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">
-                Full Results
+                Scoreboard
               </h2>
               {(() => {
                 const maxRound = Math.max(...rolls.map((r) => r.round), 1);
                 const rounds = Array.from({ length: maxRound }, (_, i) => i + 1);
+                const ranked = computeRankings(players, rolls);
 
                 return (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[360px]">
+                    <table className="w-full text-sm min-w-[400px]">
                       <thead>
                         <tr className="text-left text-gray-500 border-b border-gray-700">
+                          <th className="pb-2 font-semibold w-10 text-center">#</th>
                           <th className="pb-2 font-semibold pr-4">Player</th>
                           {rounds.map((r) => (
                             <th key={r} className="pb-2 font-semibold text-center px-2">
@@ -471,15 +550,21 @@ export default function RoomPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {players.map((p) => {
-                          const winner = !p.isEliminated;
+                        {ranked.map((p) => {
+                          const isWinner = !p.isEliminated;
+                          const posLabel = p.tied
+                            ? `T-${p.position}`
+                            : `${p.position}`;
                           return (
                             <tr
                               key={p.id}
                               className={`border-b border-gray-700/50 ${p.isEliminated ? "opacity-50" : ""}`}
                             >
+                              <td className="py-3 text-center font-bold text-gray-400">
+                                {posLabel}
+                              </td>
                               <td className="py-3 pr-4 font-medium text-white whitespace-nowrap">
-                                {winner && <span className="mr-1.5" aria-hidden>🏆</span>}
+                                {isWinner && <span className="mr-1.5" aria-hidden>🏆</span>}
                                 {p.name}
                                 {p.id === currentPlayerId && (
                                   <span className="ml-2 text-xs text-indigo-400 font-semibold">
@@ -491,7 +576,6 @@ export default function RoomPage() {
                                 const roll = rolls.find(
                                   (ro) => ro.playerId === p.id && ro.round === r
                                 );
-                                // Find highest value in this round
                                 const roundRolls = rolls.filter((ro) => ro.round === r);
                                 const maxVal = roundRolls.length
                                   ? Math.max(...roundRolls.map((ro) => ro.value))
@@ -514,13 +598,13 @@ export default function RoomPage() {
                                 );
                               })}
                               <td className="py-3 text-center px-2">
-                                {winner ? (
+                                {isWinner ? (
                                   <span className="text-green-400 font-bold text-xs uppercase tracking-wide">
-                                    Winner
+                                    {ordinal(p.position)}
                                   </span>
                                 ) : (
-                                  <span className="text-red-500 font-bold text-xs uppercase tracking-wide">
-                                    Eliminated
+                                  <span className="text-gray-400 font-bold text-xs uppercase tracking-wide">
+                                    {p.tied ? `T-${ordinal(p.position)}` : ordinal(p.position)}
                                   </span>
                                 )}
                               </td>
