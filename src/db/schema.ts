@@ -1,6 +1,6 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 
-export const rooms = sqliteTable("rooms", {
+export const rooms = pgTable("rooms", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   shareCode: text("share_code").notNull().unique(),
@@ -9,26 +9,20 @@ export const rooms = sqliteTable("rooms", {
     .default("waiting"),
   currentRound: integer("current_round").notNull().default(1),
   creatorPlayerId: text("creator_player_id"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const players = sqliteTable("players", {
+export const players = pgTable("players", {
   id: text("id").primaryKey(),
   roomId: text("room_id")
     .notNull()
     .references(() => rooms.id),
   name: text("name").notNull(),
-  isEliminated: integer("is_eliminated", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  joinedAt: integer("joined_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
+  isEliminated: boolean("is_eliminated").notNull().default(false),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
 });
 
-export const rolls = sqliteTable("rolls", {
+export const rolls = pgTable("rolls", {
   id: text("id").primaryKey(),
   playerId: text("player_id")
     .notNull()
@@ -38,7 +32,5 @@ export const rolls = sqliteTable("rolls", {
     .references(() => rooms.id),
   round: integer("round").notNull(),
   value: integer("value").notNull(),
-  rolledAt: integer("rolled_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
+  rolledAt: timestamp("rolled_at").notNull().defaultNow(),
 });

@@ -40,7 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# database
-sqlite.db
-sqlite.db-wal
-sqlite.db-shm
+# local env
+.env.local
