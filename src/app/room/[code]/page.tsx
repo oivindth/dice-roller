@@ -225,12 +225,14 @@ export default function RoomPage() {
         {room.status === "waiting" && (
           <>
             <div className="bg-gray-800 rounded-xl p-6 shadow flex flex-col gap-4">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">
-                  Invite Friends
-                </h2>
-                <ShareLink url={shareUrl} />
-              </div>
+              {isCreator && (
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    Invite Friends
+                  </h2>
+                  <ShareLink url={shareUrl} />
+                </div>
+              )}
 
               {!isInRoom && (
                 <form onSubmit={handleJoin} className="flex flex-col gap-3 border-t border-gray-700 pt-4">

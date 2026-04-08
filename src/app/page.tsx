@@ -78,7 +78,7 @@ export default function Home() {
                 htmlFor="playerName"
                 className="text-sm font-semibold text-gray-300 uppercase tracking-wide"
               >
-                Your Name
+                Your Name <span className="text-gray-500 font-normal normal-case">(optional)</span>
               </label>
               <input
                 id="playerName"
